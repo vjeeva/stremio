@@ -1,0 +1,84 @@
+# Taken from https://www.reddit.com/r/StremioAddons/comments/1icdnos/thinking_of_selfhosting_aiostreams_dont_bother/
+# Warp causes failed fetches on the first try in Stremio so I removed it.
+
+services:
+  aiostreams:
+    image: ghcr.io/viren070/aiostreams:latest
+    container_name: aiostreams
+    restart: unless-stopped
+    expose:
+      - 3000
+    # Only required if you're behind a flaggable IP (eg VPN Server or datacenter), home is fine
+    # environment:
+    #   - ADDON_PROXY=http://warp:1080
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aio.rule=Host(`aiostreams.${DOMAIN}`)" # CHANGE THIS
+      - "traefik.http.routers.aio.entrypoints=websecure"
+      - "traefik.http.routers.aio.tls.certresolver=myresolver"
+
+  mediaflow-proxy:
+    image: mhdzumair/mediaflow-proxy
+    container_name: mediaflow-proxy
+    restart: unless-stopped
+    expose:
+      - 8888
+    environment:
+      API_PASSWORD: ${MEDIAFLOW_API_PASSWORD} # Required for AIOStreams
+      # Only required if you're behind a flaggable IP (eg VPN Server or datacenter), home is fine
+      # PROXY_URL: http://warp:1080
+      # TRANSPORT_ROUTES: '{ "https://torrentio.strem.fun": { "proxy": true } }'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mediaflow.rule=Host(`mediaflow-proxy.${DOMAIN}`)" # CHANGE THIS
+      - "traefik.http.routers.mediaflow.entrypoints=websecure"
+      - "traefik.http.routers.mediaflow.tls.certresolver=myresolver"
+
+  traefik:
+    image: traefik:v3
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - 443:443
+      - 127.0.0.1:8080:8080
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.dnschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.myresolver.acme.email=${EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    environment:
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./letsencrypt:/letsencrypt"
+
+  # Only required if you're behind a flaggable IP (eg VPN Server or datacenter), home is fine
+  # warp:
+  #   image: monius/docker-warp-socks:v3
+  #   container_name: warp
+  #   restart: unless-stopped
+  #   expose:
+  #     - 1080
+  #   environment:
+  #     - NET_PORT=1080
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - SYS_MODULE
+  #   sysctls:
+  #     - net.ipv6.conf.all.disable_ipv6=0
+  #     - net.ipv4.conf.all.src_valid_mark=1
+  #   volumes:
+  #     - warp-data:/lib/modules
+  #   healthcheck:
+  #     test: curl -x "socks5h://127.0.0.1:1080" -fsSL "https://www.cloudflare.com/cdn-cgi/trace" | grep -qE "warp=(plus|on)" || exit 1
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 3
+
+# Only required if you're behind a flaggable IP (eg VPN Server or datacenter), home is fine
+# volumes:
+#   warp-data:
