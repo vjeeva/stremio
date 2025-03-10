@@ -123,9 +123,34 @@ if [ $(echo $LOCAL_IP | wc -w) -ne 1 ]; then
 fi
 
 # DNS Record for aiostreams and mediaflow-proxy
-# TODO: If the records exist, this will do nothing. Need to delete and recreate them if they change.
 for PREFIX in aiostreams mediaflow-proxy; do
 
+  # Check if the record exists and has the correct IP
+  ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" \
+    -H "Authorization: Bearer $CF_DNS_API_TOKEN" \
+    -H "Content-Type: application/json" | jq -r '.result[0].id')
+  RECORD_RES=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=$PREFIX.$DOMAIN" \
+    -H "Authorization: Bearer $CF_DNS_API_TOKEN" \
+    -H "Content-Type: application/json" | jq -r '.result')
+
+  # RECORD_RES will be [] if the record isn't found.
+  if [ "$RECORD_RES" != "[]" ]; then
+    # Check if the IP is correct
+    RECORD_IP=$(echo $RECORD_RES | jq -r '.[0].content')
+    if [ "$RECORD_IP" == "$LOCAL_IP" ]; then
+      echo -e "\n\e[1;32mDNS Record for $PREFIX.$DOMAIN already exists and has the correct IP\e[0m"
+      continue
+    else
+      # Delete the record.
+      echo -e "\n\e[1;32mDeleting existing DNS Record for $PREFIX.$DOMAIN, as the old IP $RECORD_IP does not match the current IP $LOCAL_IP.\e[0m"
+      RECORD_ID=$(echo $RECORD_RES | jq -r '.[0].id')
+      curl -X DELETE https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID \
+        -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer $CF_DNS_API_TOKEN"
+    fi
+  fi
+
+  echo -e "\n\e[1;32mCreating DNS Record for $PREFIX.$DOMAIN with IP $LOCAL_IP.\e[0m"
   curl https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records \
       -H 'Content-Type: application/json' \
       -H "Authorization: Bearer $CF_DNS_API_TOKEN" \
@@ -158,8 +183,28 @@ NEXTDNS_API_URL="https://api.nextdns.io/profiles/$NEXTDNS_PROFILE_ID"
 echo -e "\e[1;32mSetting up NextDNS Rewrites for Tailscale...\e[0m"
 
 # Add DNS Rewrites for aiostreams and mediaflow-proxy
-# TODO: If rewrites exist for the domains, this will fail. Need to delete and recreate them.
 for PREFIX in aiostreams mediaflow-proxy; do
+
+  # Check if the rewrite exists
+  REWRITE_RES=$(curl "$NEXTDNS_API_URL/rewrites" \
+       -H "X-Api-Key: $NEXTDNS_API_KEY" \
+       -H "Content-Type: application/json" | jq -r '.data[] | select(.name == "'"$PREFIX.$DOMAIN"'")')
+
+  if [ "$REWRITE_RES" != "" ]; then
+    # Check if the Tailscale IP is correct
+    REWRITE_RES_IP=$(echo $REWRITE_RES | jq -r '.content')
+    if [ "$REWRITE_RES_IP" == "$REWRITE_IP" ]; then
+      echo -e "\n\e[1;32mNextDNS Tailscale Rewrite for $PREFIX.$DOMAIN already exists and has the correct IP\e[0m"
+      continue
+    else
+      # Delete the rewrite.
+      echo -e "\n\e[1;32mDeleting existing Rewrite for $PREFIX.$DOMAIN, as the old Tailscale IP $REWRITE_RES_IP does not match the current Tailscale IP $REWRITE_IP.\e[0m"
+      REWRITE_ID=$(echo $REWRITE_RES | jq -r '.id')
+      curl -X DELETE "$NEXTDNS_API_URL/rewrites/$REWRITE_ID" \
+        -H 'Content-Type: application/json' \
+        -H "X-Api-Key: $NEXTDNS_API_KEY"
+    fi
+  fi
 
   curl -X POST "$NEXTDNS_API_URL/rewrites" \
        -H "X-Api-Key: $NEXTDNS_API_KEY" \
