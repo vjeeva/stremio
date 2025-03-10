@@ -49,9 +49,29 @@ Do the following:
 
 If you are NOT using Ubuntu or Debian, skip to the next section for manual instructions.
 
-Using the automated setup will ensure your server is set up correctly and all the setup bits are automated. It will also create a startup script to ensure your LAN IP and Tailscale IP are always in sync with the entire setup.
+Using the automated setup will ensure your server is set up correctly and all the setup bits are automated. In the future, this will also create a startup script to ensure your LAN IP and Tailscale IP are always in sync with the entire setup, and start up the Docker Services.
 
-Simply run the following command on your server:
+Before starting this script, you need the following values:
+1. Your Cloudflare DNS API Token
+    - Go to your Cloudflare account, on the bottom left go to `Manage Account`, then click `Account API Tokens`.
+    - Click on Create Token, then Use Template, then Edit Zone DNS.
+    - Under Permissions, ensure Zone -> DNS -> Edit is selected.
+    - Add another permission for Zone -> Zone -> Read.
+    - Under Zone Resources, select the domain you bought.
+    - Click Continue, then Create Token.
+    - Copy the token and keep it safe.
+2. Your Domain Name eg 'yourdomain.stream'
+3. Your NextDNS Profile ID
+    - Go [here](https://my.nextdns.io/). The page will redirect to your Profile. In the URL, you will see `https://my.nextdns.io/<Profile ID>/setup`.
+4. Your NextDNS API Key (NEXTDNS_API_KEY)
+    - Go [here](https://my.nextdns.io/account), then scroll down to the bottom to find your API Key.
+5. Your Tailscale API Key (TAILSCALE_API_KEY)
+    - Go to your Tailscale Admin Console, click `Settings` then Personal Setings -> Keys.
+    - Click `Generate access token...`, then copy the key.
+6. Your email address, will be used for SSL Certificate
+7. An API Password for MediaFlow (can be whatever) 
+
+Once you have everything, simply run the following command on your server:
 
 ```bash
 curl -s https://raw.githubusercontent.com/vjeeva/stremio/main/setup.sh > setup.sh && chmod +x setup.sh && ./setup.sh
