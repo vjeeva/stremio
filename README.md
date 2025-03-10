@@ -80,7 +80,6 @@ Yes you need this. even though you're not hosting publicly. Stremio requires SSL
 1. Make appropriate DNS Records:
     - A subdomain A record for AIOStreams (e.g. `aiostreams.yourdomain.stream`) pointing to your server's LAN IP address.
     - A subdomain A record for MediaFlow Proxy (e.g. `mediaflow-proxy.yourdomain.stream`) pointing to your server's LAN IP address.
-    - TODO: Make this a CRON job to update it according to its own LAN IP.
 
 To ensure your server is accessible while on Tailscale and not your LAN, we need to set up NextDNS for TailScale to rewrite the above DNS records to your Tailscale IP.
 
