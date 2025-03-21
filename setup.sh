@@ -47,6 +47,9 @@ read -p "Enter your Tailscale API Key (TAILSCALE_API_KEY): " TAILSCALE_API_KEY
 read -p "Enter your email address, will be used for SSL Certificate (EMAIL): " EMAIL
 read -p "Enter an API Password for MediaFlow (can be whatever) (MEDIAFLOW_API_PASSWORD): " MEDIAFLOW_API_PASSWORD
 
+# Returns either `debian` or `ubuntu`
+OS=$(cat /etc/os-release | grep -i "^ID" | sed s/ID=//g)
+
 # Install Docker
 # From https://docs.docker.com/engine/install/ubuntu/
 # ----------------------------------------------------
@@ -62,12 +65,12 @@ else
   sudo apt update
   sudo apt-get -y install ca-certificates curl
   sudo install -m 0755 -d /etc/apt/keyrings
-  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  sudo curl -fsSL https://download.docker.com/linux/$OS/gpg -o /etc/apt/keyrings/docker.asc
   sudo chmod a+r /etc/apt/keyrings/docker.asc
 
   # Add the repository to Apt sources:
   echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$OS \
     $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
   sudo apt-get update
@@ -89,8 +92,8 @@ else
 
   echo -e "\e[1;32mInstalling Tailscale...\e[0m"
 
-  curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-  curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
+  curl -fsSL https://pkgs.tailscale.com/stable/$OS/${UBUNTU_CODENAME:-$VERSION_CODENAME}.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+  curl -fsSL https://pkgs.tailscale.com/stable/$OS/${UBUNTU_CODENAME:-$VERSION_CODENAME}.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
   sudo apt-get update
   sudo apt-get -y install tailscale
 
